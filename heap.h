@@ -46,6 +46,8 @@ void heap_clean(void);
 
 void *heap_malloc(size_t size);
 
+int check_control_structures();
+
 void hash_control_structures();
 
 int hash_single_structure(struct memory_chunk_t *chunk);
