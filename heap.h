@@ -36,8 +36,6 @@ enum pointer_type_t {
 
 size_t heap_get_largest_used_block_size(void);
 
-enum pointer_type_t get_pointer_type(const void *const pointer);
-
 int heap_validate(void);
 
 int heap_setup(void);
@@ -58,16 +56,22 @@ void heap_free(void *memblock);
 
 void heap_conjunction(struct memory_chunk_t *chunk);
 
-int calculate_full_size_of_memblock(struct memory_chunk_t* chunk);
+int calculate_full_size_of_memblock(struct memory_chunk_t *chunk);
 
 int rest_of_memory_in_heap(struct memory_chunk_t *chunk);
 
-int check_if_pointer_is_block_pointer(struct memory_chunk_t* chunk);
+int check_if_pointer_is_block_pointer(struct memory_chunk_t *chunk);
 
-int check_if_heap_is_empty(struct memory_chunk_t* chunk);
+int check_if_heap_is_empty(struct memory_chunk_t *chunk);
 
-void* heap_realloc(void* memblock, size_t count);
+void *heap_realloc(void *memblock, size_t count);
 
-enum pointer_type_t get_pointer_type(const void *const pointer);
+enum pointer_type_t get_pointer_type(const void * pointer);
+
+int check_if_block_of_current_fence_pointer_is_occupied(char *ptr);
+
+int check_if_pointer_is_element_of_block(uint8_t *ptr);
+
+int check_if_pointer_is_inside_data_block(const uint8_t *ptr);
 
 #endif

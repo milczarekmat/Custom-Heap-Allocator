@@ -413,3 +413,80 @@ size_t heap_get_largest_used_block_size(void) {
     }
     return max_size == 0 ? 0 : max_size - 2 * FENCE_SIZE;
 }
+
+enum pointer_type_t get_pointer_type(const void *const pointer) {
+    if (!pointer) {
+        return pointer_null;
+    }
+    if (heap_validate()) {
+        return pointer_heap_corrupted;
+    }
+
+    if (check_if_pointer_is_block_pointer((struct memory_chunk_t *) pointer)) {
+        return pointer_control_block;
+    }
+    if (check_if_pointer_is_element_of_block((uint8_t *) pointer)) {
+        return pointer_control_block;
+    }
+
+    if (check_if_pointer_is_inside_data_block((uint8_t *) pointer)) {
+        return pointer_inside_data_block;
+    }
+
+    struct memory_chunk_t *p_check = (struct memory_chunk_t *) ((uint8_t *) pointer - sizeof(struct memory_chunk_t) -
+                                                                FENCE_SIZE);
+    if (p_check->free == 1) {
+        return pointer_unallocated;
+    }
+    p_check = (struct memory_chunk_t *) ((uint8_t *) pointer -
+                                         sizeof(struct memory_chunk_t) - FENCE_SIZE);
+    if (check_if_pointer_is_block_pointer(p_check)) {
+        return pointer_valid;
+    }
+
+    if (*(char *) pointer == '#') {
+        if (check_if_block_of_current_fence_pointer_is_occupied((char *) pointer)) {
+            return pointer_inside_fences;
+        }
+    }
+
+    return pointer_unallocated;
+}
+
+int check_if_block_of_current_fence_pointer_is_occupied(char *ptr) {
+    while (!check_if_pointer_is_block_pointer((struct memory_chunk_t *) ptr)) {
+        ptr--;
+    }
+    struct memory_chunk_t *chunk = (struct memory_chunk_t *) ptr;
+    if (chunk->free == 0) {
+        return 1;
+    }
+    return 0;
+}
+
+int check_if_pointer_is_element_of_block(uint8_t *ptr) {
+    for (int i = 1; i < (int) sizeof(struct memory_chunk_t); ++i) {
+        uint8_t *temp = ptr - i;
+        if (check_if_pointer_is_block_pointer((struct memory_chunk_t *) temp)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int check_if_pointer_is_inside_data_block(const uint8_t *ptr) {
+    for (struct memory_chunk_t *p_current = memory_manager.first_memory_chunk;
+         p_current != NULL; p_current = p_current->next) {
+        if (p_current->free == 1) {
+            continue;
+        }
+        uint8_t *p_check = (uint8_t *) p_current + sizeof(struct memory_chunk_t) + FENCE_SIZE + 1;
+        for (size_t i = 1; i < p_current->size - 2 * FENCE_SIZE; i++) {
+            if (p_check == ptr) {
+                return 1;
+            }
+            p_check++;
+        }
+    }
+    return 0;
+}
