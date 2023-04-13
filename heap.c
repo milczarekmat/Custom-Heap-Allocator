@@ -288,3 +288,108 @@ int rest_of_memory_in_heap(struct memory_chunk_t *chunk) {
     result += (int) (chunk->size + sizeof(struct memory_chunk_t));
     return (int) (memory_manager.memory_size - result);
 }
+
+void *heap_realloc(void *memblock, size_t count) {
+    if (count == 0 && !memblock) {
+        return NULL;
+    }
+
+    if (heap_validate()) {
+        return NULL;
+    }
+
+    if (!memblock) {
+        return heap_malloc(count);
+    }
+
+    struct memory_chunk_t *chunk = (struct memory_chunk_t *) ((uint8_t *) memblock
+                                                              - sizeof(struct memory_chunk_t) - FENCE_SIZE);
+    if (!check_if_pointer_is_block_pointer(chunk)) {
+        return NULL;
+    }
+
+    if (chunk->size == count + 2 * FENCE_SIZE) {
+        return memblock;
+    } else if (chunk->size > count + 2 * FENCE_SIZE) {
+        if (count == 0) {
+            chunk->free = 1;
+            hash_control_structures();
+            return NULL;
+        }
+        chunk->size = count + 2 * FENCE_SIZE;
+        hash_control_structures();
+        char *ptr = (char *) memblock + count;
+        memset(ptr, '#', FENCE_SIZE);
+        return memblock;
+    } else {
+        if (calculate_full_size_of_memblock(chunk) - 2 * FENCE_SIZE >=
+            (int) count) { // przesuniecie pamieci w tym samym bloku
+            chunk->size = count + 2 * FENCE_SIZE;
+            memset(memblock, 'b', count);
+            char *ptr = (char *) memblock + count;
+            memset(ptr, '#', FENCE_SIZE);
+            hash_control_structures();
+            return memblock;
+        }
+
+        if (chunk->next) {
+            if (chunk->next->free) {
+                size_t complete_size =
+                        calculate_full_size_of_memblock(chunk) + calculate_full_size_of_memblock(chunk->next) -
+                        2 * FENCE_SIZE +
+                        sizeof(struct memory_chunk_t);
+                if (complete_size >= count) { //przeniesienie do nastepnego bloku/obszaru
+                    heap_free(memblock);
+                    void *ptr = heap_malloc(count);
+                    if (ptr) {
+                        return ptr;
+                    }
+                } else {
+                    if (!chunk->next->next) { //dodanie pamieci do drugiego wolnego bloku
+                        int new_size = (int) (count - complete_size);
+                        void *temp = custom_sbrk(new_size);
+                        if (!temp) {
+                            return NULL;
+                        }
+                        memory_manager.memory_size += new_size;
+                        chunk->size = count + 2 * FENCE_SIZE;
+                        chunk->next = chunk->next->next;
+                        hash_control_structures();
+                        memset((uint8_t *) memblock + count, '#', FENCE_SIZE);
+                        return memblock;
+                    } else {
+                        void *new_mem = heap_malloc(count);
+                        if (!new_mem) {
+                            return NULL;
+                        }
+                        memcpy(new_mem, memblock, chunk->size);
+                        heap_free(memblock);
+                        return new_mem;
+                    }
+                }
+            } else { // przeniesienie bloku do innego miejsca w pamieci
+                void *new_mem = heap_malloc(count);
+                if (!new_mem) {
+                    return NULL;
+                }
+                memcpy(new_mem, memblock, chunk->size - 2 * FENCE_SIZE);
+                heap_free(memblock);
+                return new_mem;
+            }
+        }
+
+        //ostatni blok na stercie i/lub brak pamieci
+        int new_size = (int) ((count + FENCE_SIZE) - rest_of_memory_in_heap(chunk) - (chunk->size - FENCE_SIZE));
+        void *temp = sbrk(new_size);
+        if (errno == ENOMEM) {
+            errno = 0;
+            return NULL;
+        }
+        memory_manager.memory_size += new_size;
+        chunk->size = count + 2 * FENCE_SIZE;
+        hash_control_structures();
+        memset((uint8_t *) temp + new_size - FENCE_SIZE, '#', FENCE_SIZE);
+        return memblock;
+
+    }
+}

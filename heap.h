@@ -66,4 +66,6 @@ int check_if_pointer_is_block_pointer(struct memory_chunk_t* chunk);
 
 int check_if_heap_is_empty(struct memory_chunk_t* chunk);
 
+void* heap_realloc(void* memblock, size_t count);
+
 #endif
