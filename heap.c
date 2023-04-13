@@ -12,3 +12,11 @@ int heap_setup(void){
     memory_manager.memory_start = heap;
     return 0;
 }
+
+void heap_clean(void){
+    sbrk(memory_manager.memory_size * -1);
+    memory_manager.first_memory_chunk = NULL;
+    memory_manager.memory_start = NULL;
+    memory_manager.memory_size = 0;
+
+}
