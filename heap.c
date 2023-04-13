@@ -115,3 +115,15 @@ void* heap_malloc(size_t size){
     memset(fence + size +FENCE_SIZE, '#', FENCE_SIZE);
     return ptr;
 }
+
+void hash_control_structures(){
+    for (struct memory_chunk_t* p_current = memory_manager.first_memory_chunk;
+         p_current != NULL; p_current = p_current->next) {
+        uint8_t *ptr = (uint8_t *) p_current;
+        int hash_result = 0;
+        for (int i = 0; i < (int) (sizeof(struct memory_chunk_t) - sizeof(int)); i++) {
+            hash_result += *ptr++;
+        }
+        p_current->hash = hash_result;
+    }
+}
