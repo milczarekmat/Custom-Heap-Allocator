@@ -52,4 +52,18 @@ void hash_control_structures();
 
 int hash_single_structure(struct memory_chunk_t *chunk);
 
+void *heap_calloc(size_t number, size_t size);
+
+void heap_free(void *memblock);
+
+void heap_conjunction(struct memory_chunk_t *chunk);
+
+int calculate_full_size_of_memblock(struct memory_chunk_t* chunk);
+
+int rest_of_memory_in_heap(struct memory_chunk_t *chunk);
+
+int check_if_pointer_is_block_pointer(struct memory_chunk_t* chunk);
+
+int check_if_heap_is_empty(struct memory_chunk_t* chunk);
+
 #endif

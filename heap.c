@@ -171,3 +171,120 @@ int hash_single_structure(struct memory_chunk_t *chunk) {
     }
     return hash_result;
 }
+
+void *heap_calloc(size_t number, size_t size) {
+    if (number == 0 || size == 0) {
+        return NULL;
+    }
+    if (heap_validate()) {
+        return NULL;
+    }
+
+    void *result = heap_malloc(size * number);
+    if (result) {
+        memset(result, 0, size * number);
+    }
+    return result;
+}
+
+void heap_free(void *memblock) {
+    if (!memblock) {
+        return;
+    }
+    struct memory_chunk_t *chunk_to_free = (struct memory_chunk_t *) ((uint8_t *) memblock -
+                                                                      sizeof(struct memory_chunk_t) - FENCE_SIZE);
+
+    if (!check_if_pointer_is_block_pointer(chunk_to_free)) {
+        return;
+    }
+
+    if (heap_validate()) {
+        return;
+    }
+
+    int conjunction_flag = 0;
+    if (chunk_to_free->next) {
+        if (chunk_to_free->next->free) {
+            heap_conjunction(chunk_to_free);
+            conjunction_flag = 1;
+        }
+    }
+    if (chunk_to_free->prev) {
+        if (chunk_to_free->prev->free) {
+            heap_conjunction(chunk_to_free->prev);
+            conjunction_flag = 1;
+        }
+    }
+
+    chunk_to_free->free = 1;
+    if (!conjunction_flag) {
+        chunk_to_free->size = calculate_full_size_of_memblock(chunk_to_free);
+    }
+
+    int check = check_if_heap_is_empty(memory_manager.first_memory_chunk);
+
+    if (!check) {
+        memory_manager.first_memory_chunk = NULL;
+    }
+    hash_control_structures();
+}
+
+int check_if_pointer_is_block_pointer(struct memory_chunk_t *chunk) {
+    for (struct memory_chunk_t *p_current = memory_manager.first_memory_chunk;
+         p_current != NULL; p_current = p_current->next) {
+        if (chunk == p_current) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void heap_conjunction(struct memory_chunk_t *chunk) {
+    int size_after_conjuction = (int) (calculate_full_size_of_memblock(chunk)
+                                       + calculate_full_size_of_memblock(chunk->next) + sizeof(struct memory_chunk_t));
+
+    chunk->free = 1;
+    chunk->size = size_after_conjuction;
+    if (chunk->next) {
+        chunk->next = chunk->next->next;
+    }
+    if (chunk->next) {
+        chunk->next->prev = chunk;
+    } else {
+        if (chunk->prev) {
+            chunk->prev->next = NULL;
+        }
+    }
+}
+
+int calculate_full_size_of_memblock(struct memory_chunk_t *chunk) {
+    if (!chunk) {
+        return 0;
+    }
+    int result;
+    if (chunk->next) {
+        result = (int) ((uint8_t *) chunk->next - (uint8_t *) chunk - sizeof(struct memory_chunk_t));
+    } else {
+        if (chunk == memory_manager.first_memory_chunk) {
+            result = chunk->size + 2 * FENCE_SIZE;
+        } else {
+            result = rest_of_memory_in_heap(chunk);
+        }
+    }
+    return result;
+}
+
+int rest_of_memory_in_heap(struct memory_chunk_t *chunk) {
+    int result = 0;
+    if (memory_manager.first_memory_chunk == chunk) {
+        return result;
+    }
+    for (struct memory_chunk_t *p_current = memory_manager.first_memory_chunk; p_current != NULL;
+         p_current = p_current->next) {
+        if (p_current->prev) {
+            result += (int) ((uint8_t *) p_current - (uint8_t *) p_current->prev);
+        }
+    }
+    result += (int) (chunk->size + sizeof(struct memory_chunk_t));
+    return (int) (memory_manager.memory_size - result);
+}
