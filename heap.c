@@ -127,3 +127,32 @@ void hash_control_structures(){
         p_current->hash = hash_result;
     }
 }
+
+int heap_validate(void){
+    if (memory_manager.memory_start == NULL){
+        return 2;
+    }
+
+    int check_structures = check_control_structures(memory_manager.first_memory_chunk);
+
+    if (!check_structures){
+        return 3;
+    }
+
+    for (struct memory_chunk_t* p_current = memory_manager.first_memory_chunk;
+         p_current != NULL; p_current = p_current->next){
+        if (p_current->free){
+            continue;
+        }
+        char *p_check = (char*)p_current + sizeof(struct memory_chunk_t);
+        for (int j=0; j<2; j++, p_check += p_current->size-2*FENCE_SIZE){
+            for (int i=0; i<FENCE_SIZE; i++){
+                if (*p_check != '#'){
+                    return 1;
+                }
+                p_check++;
+            }
+        }
+    }
+    return 0;
+}
