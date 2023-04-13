@@ -347,7 +347,7 @@ void *heap_realloc(void *memblock, size_t count) {
                 } else {
                     if (!chunk->next->next) { //dodanie pamieci do drugiego wolnego bloku
                         int new_size = (int) (count - complete_size);
-                        void *temp = custom_sbrk(new_size);
+                        void *temp = sbrk(new_size);
                         if (!temp) {
                             return NULL;
                         }
