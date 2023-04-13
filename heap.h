@@ -68,4 +68,6 @@ int check_if_heap_is_empty(struct memory_chunk_t* chunk);
 
 void* heap_realloc(void* memblock, size_t count);
 
+enum pointer_type_t get_pointer_type(const void *const pointer);
+
 #endif

@@ -393,3 +393,23 @@ void *heap_realloc(void *memblock, size_t count) {
 
     }
 }
+
+size_t heap_get_largest_used_block_size(void) {
+    if (memory_manager.first_memory_chunk == NULL) {
+        return 0;
+    }
+    if (!check_if_heap_is_empty(memory_manager.first_memory_chunk)) {
+        return 0;
+    }
+    if (heap_validate()) {
+        return 0;
+    }
+    size_t max_size = 0;
+    for (struct memory_chunk_t *p_current = memory_manager.first_memory_chunk;
+         p_current != NULL; p_current = p_current->next) {
+        if (p_current->size > max_size && p_current->free == 0) {
+            max_size = p_current->size;
+        }
+    }
+    return max_size == 0 ? 0 : max_size - 2 * FENCE_SIZE;
+}
